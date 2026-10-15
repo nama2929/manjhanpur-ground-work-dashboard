@@ -4,3 +4,8 @@ __pycache__/
 .streamlit/secrets.toml
 *.xlsx
 *.csv
+# Never publish downloaded service-account credentials
+*.json
+*.pem
+.env
+.env.*
