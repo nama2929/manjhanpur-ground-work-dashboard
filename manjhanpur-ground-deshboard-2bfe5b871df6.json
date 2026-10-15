@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "manjhanpur-ground-deshboard",
+  "private_key_id": "2bfe5b871df62779d6cb8a3478ef70dd5c8d2039",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDV35V388zeAbIf\n/AQHkg9o7ecqWmb8M0uZK7MWyyiqztD5u008vfDf3MObkPA2R5ZJV4ey22wmXuNd\npfv1uS1pksXAsEZS3hGXnJ5l9D6ZZrGhO6vSVOBFOxAehhC5+z7DPq9cyXqP9Xkh\nq+McPTXN9qQyZmZbgz3kLEpVSwOZOCauFctEAi/5ZHJUkRuH3hToyYpsMsb0OXPZ\ndiTNXNsh7MTQCIvcEIvuS4tt8DiSAHImOkbOVkVQBkc+Xxstt1DnLcYQM50PE9E2\nYQBXb1LSlmyfHmoEG6/OHWMO5Xp2QRpNwpeRqIy7Gk0oN6X5AOkZR0dHg3sWY5TY\nCm3IU+wHAgMBAAECggEAA0bFl2zYup30CKFnvmXybn0WiYORCFQQ2Gve9n5uRQ+e\nC/VenYubYRKUvJFf3LUEDGOW5JqP8ZaKjSi5z23i0Dc7aFRK/4H/av8vPgib3OXB\n2uJ7I2HBfc4F1THgl7jNoVgYf6dmhUYRcP6dIBWf+WPJ6CvBba15CUHUcbIQgAxg\n/gtEdNTMQSIwFdJJtMkaGJTXjk9PFTFGS4doWdNKvLc9lHNqa4DEXJjgWybf1DEZ\nC5hTAzRR5koa33y51N4ZpH3CnZrInxrCgPqL6UaPtlEZulstq3kMBrogaN6+1Goz\n83FWULJhLc9AHO1sziqPJYWbCHvkgfcoCKQAPFg/oQKBgQD06s9EU8HrgReFJxZ+\ngsv4ZM1YZ1fgJzn6sYub2rvduILNeCqJRez4C3aFORF4LqbdjIi/HZRDMXFxpHnH\nSWoJNLP7XfCsG8FrF18D+gzcUwBJ2c9Q5+vE09jUMFFZFjsUg7sduwJrTRccZh1K\n3eglMgFF3w69ubJW3mFIfZuFvQKBgQDfjSdKvO9qvAMucz+UE6dOD/wpDlLlpyt1\n5CrSEVFK7Hq4L9Yjf+h08MuaFnf/3HvxPIgRf/jNcCyBj8yDa/f8lQzjVhyi9H/i\nnjrf2jRQiZQVpnrysnFSDBPScKSGj7JLvntMcX/qTkkTIppsjHhNkm2kD/8yLdyW\nwpOA/x9rEwKBgBP8ZVWKEDULn8O54NgKDGMEts0UAdPE37JZcq8RNmttdx8VQ0NY\ndXH4XX+ZnJdWFz/VDAOsgkDJdBx184oTr5d4uYc1r0IcMbhve81zRkFkdI2SPJy5\nkD/LmdIW70x5x/Bwn4BZlmTzMYObwaAuY5dFcV0mSqmo0ajNFNs5hMtxAoGAMFI8\nigUo4zNcpK+4sHNHGLKP2PgFpyppVIRLVTj1D3LqW+HLMcU2JADgoZ/1tFKeX9ir\nuMympRF4LVE97bJq2igFryYv7nFXK070fuqVoEr8vWlM7iTwJcICjtxWU9e/vGui\nDzYBZk4hsYcrRgdfAbWDCZGDof8TzWqlo56B1g0CgYB1fPexMgo/qcfIyVCXoCEr\nBES33/Y7oONALQwnXiuN/m5vtmAuVDnRf5aogVJwE/9LBPykz40hLbGmFUMWZ7V1\npwWfvABGe2ZSth63SWuYTw7FmC8lHJ2uSQ4dOHDnRbFYH7GsCMWDPRJ6L/X/uair\nBqFTbgyH2VyPvA0lCgOnDQ==\n-----END PRIVATE KEY-----\n",
+  "client_email": "manjhanpur-dashboard-reader@manjhanpur-ground-deshboard.iam.gserviceaccount.com",
+  "client_id": "114785478658850830704",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/manjhanpur-dashboard-reader%40manjhanpur-ground-deshboard.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
