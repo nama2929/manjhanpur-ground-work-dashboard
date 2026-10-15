@@ -1,4 +1,6 @@
-streamlit>=1.38,<2
+streamlit>=1.40,<2
 gspread>=6.0,<7
 google-auth>=2.20,<3
 streamlit-autorefresh>=1.0.1,<2
+pandas>=2.0,<3
+altair>=5.0,<7
