@@ -1,4 +1,4 @@
-"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.
+"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.1 Mobile Fix.
 Read-only reporting from the same nine original Google Sheets as V4.
 No credentials or private data are bundled in this repository.
 """
@@ -41,8 +41,14 @@ except (AttributeError, TypeError):
 NOW = dt.datetime.now(ZoneInfo("Asia/Kolkata"))
 ALL = "All Coordinators"
 PAGES = ["home", "reports", "dates", "team"]
-PORTRAIT_MP = 'https://assets.telegraphindia.com/telegraph/2024/Jun/1718003396_pushpendra-saroj_facebook_pushpendra-saroj-1.jpg'
-PORTRAIT_MLA = 'https://www.jansatta.com/wp-content/uploads/2025/04/indrajeet-saroj.jpg'
+# Stable local portraits from the office dashboard's previously shared visual reference.
+# Avoid external image hotlink failures on iPhones and other browsers.
+def local_img_uri(name: str) -> str:
+    path = ROOT / 'assets' / name
+    return 'data:image/jpeg;base64,' + base64.b64encode(path.read_bytes()).decode('ascii')
+
+PORTRAIT_MP = local_img_uri('pushpendra-saroj.jpg')
+PORTRAIT_MLA = local_img_uri('indrajeet-saroj.jpg')
 PALETTE = {"orange": "#bf642d", "deep": "#29394b", "sage": "#43867b", "blue": "#587fac"}
 
 LABEL = {
@@ -164,6 +170,60 @@ div[data-baseweb="select"]>div{background:#fff!important;color:#283b4d!important
  div[data-testid="stHorizontalBlock"]{gap:.5rem}
 }
 @media(max-width:360px){.brand-right{display:none}.kpi-grid{grid-template-columns:1fr 1fr}.kpi-value{font-size:1.48rem}}
+
+/* V5.1 / a reading-first, touch-friendly interface on all screen sizes. */
+[data-testid="stToolbar"],[data-testid="stAppDeployButton"],
+[data-testid="stDecoration"],#MainMenu{display:none!important}
+[data-testid="stHeader"]{background:transparent!important}
+[data-testid="stStatusWidget"]{display:none!important}
+[data-testid="stMainBlockContainer"]{min-width:0!important}
+[data-testid="stDataFrame"]{max-width:100%;overflow-x:auto}
+.person img{display:block;object-fit:cover}
+@media(min-width:701px) and (max-width:1024px){
+ .block-container{padding:1.1rem 1.15rem 3rem!important}
+ .people-grid{gap:10px}
+ .person{gap:10px;padding:10px}
+ .person img{width:82px;height:96px}
+ .person strong{font-size:.88rem}
+ .brand-right{white-space:normal;max-width:110px}
+}
+@media(max-width:700px){
+ html,body,.stApp{overflow-x:hidden!important}
+ .block-container{padding:.48rem .85rem 4rem!important}
+ .brand-shell{padding:9px 10px;gap:6px;margin:2px 0 11px;border-radius:12px}
+ .brand-logo{height:45px;width:45px}
+ .brand-title{font-size:1rem;letter-spacing:-.03em}
+ .brand-tag{font-size:.57rem;line-height:1.2;letter-spacing:.01em;padding-top:3px}
+ .brand-right{display:none}
+ .hero{padding:16px 14px;margin:9px 0 12px}
+ .hero h1{font-size:1.47rem;line-height:1.14;margin:7px 0}
+ .hero p{font-size:.79rem;line-height:1.4}
+ .hero-eyebrow{font-size:.61rem}
+ .people-grid{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px}
+ .person{display:flex;flex-direction:row;text-align:left;gap:13px;padding:10px 12px;border-radius:14px;min-height:0}
+ .person img{width:77px;height:85px;flex:0 0 77px;object-position:50% 23%;border-radius:9px}
+ .person>div{flex:1;min-width:0}
+ .person small{font-size:.63rem;padding-top:0;line-height:1.4}
+ .person strong{font-size:.87rem;line-height:1.3;margin-top:2px}
+ .person span{font-size:.71rem;line-height:1.3;padding-top:4px}
+ .section-head{font-size:1.05rem;margin:13px 0 8px}
+ .source-state{font-size:.73rem;gap:5px;margin:4px 0 7px;line-height:1.4}
+ .state-chip{padding:4px 8px}
+ .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .kpi{padding:13px 11px;min-height:94px}
+ .kpi-value{font-size:1.45rem}
+ .kpi-label{font-size:.68rem}
+ .stButton>button,div[data-testid="stDownloadButton"]>button{min-height:48px!important}
+ [data-testid="stSelectbox"] label{font-size:.77rem!important}
+ [data-testid="stHorizontalBlock"]{row-gap:.35rem!important}
+ [data-testid="stTable"],[data-testid="stDataFrame"]{width:100%;overflow:auto}
+}
+@media(max-width:375px){
+ .person img{width:64px;height:78px;flex-basis:64px}
+ .person strong{font-size:.82rem}
+ .brand-tag{font-size:.53rem}
+ .kpi-label{font-size:.65rem}
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -347,18 +407,19 @@ connected=sum(1 for entry in health if entry.get('ok'))
 total=len(COORDINATORS)*len(TABS)
 
 brand_header()
-# Four obvious MP navigation options, same logic on mobile and large screens.
-nav1,nav2=st.columns([3.8,1],gap='small')
+# A single clearly-labelled page dropdown works on phones, tablets and laptops.
+# Keep the page key compatible with existing navigation callbacks.
+nav1,nav2=st.columns([2.2,1],gap='small')
+with nav1:
+    page=st.selectbox(
+        'Open page / पेज चुनें', PAGES + ['health'],
+        format_func=lambda p: ('⚙ '+tr('health') if p=='health' else {
+            'home':'⌂ '+tr('home'), 'reports':'▣ '+tr('reports'),
+            'dates':'▤ '+tr('dates'), 'team':'♙ '+tr('team')}[p]),
+        key='page_v5',
+    )
 with nav2:
     lang=st.selectbox('Language / भाषा',['English','हिंदी'],key='language_v5')
-with nav1:
-    page=st.segmented_control('Navigate / चुनें',PAGES + (['health'] if st.session_state.page_v5=='health' else []),
-                              selection_mode='single',format_func=lambda p:('⚙ '+tr('health') if p=='health' else {
-                               'home':'⌂ '+tr('home'),'reports':'▣ '+tr('reports'),
-                               'dates':'▤ '+tr('dates'),'team':'♙ '+tr('team')}[p]),
-                              key='page_v5',label_visibility='visible')
-if page is None:
-    page='home'
 if source=='Live Google Sheets':
     if loaded and connected==total:
         state=f'{connected}/{total} '+('tabs connected' if lang=='English' else 'टैब जुड़े हुए')
