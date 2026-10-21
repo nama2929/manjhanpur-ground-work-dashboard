@@ -1,4 +1,4 @@
-"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.1 Mobile Fix.
+"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.2 UX.
 Read-only reporting from the same nine original Google Sheets as V4.
 No credentials or private data are bundled in this repository.
 """
@@ -68,6 +68,9 @@ LABEL = {
         'team_title':'Coordinator Overview', 'quick':'Open a report', 'office':'Office view',
         'refresh':'Refresh data','login':'Office sign in','data':'Source', 'source':'Connection',
         'metrics':'At a glance','records':'Records','status':'Current reporting status',
+        'scope':'Keep these filters across reports','reset':'Reset filters','readable':'Full records',
+        'spreadsheet':'Table view','page':'Page','of':'of','per_page':'Records per page',
+        'village_all':'All panchayats', 'active':'Currently viewing',
     },
     'हिंदी': {
         'home':'होम','reports':'रिपोर्ट','dates':'दिनांकवार सार','team':'टीम','health':'कनेक्शन स्थिति',
@@ -85,6 +88,9 @@ LABEL = {
         'team_title':'संयोजक सारांश','quick':'रिपोर्ट खोलें','office':'कार्यालय दृश्य',
         'refresh':'डेटा रीफ़्रेश','login':'कार्यालय लॉगिन','data':'डेटा स्रोत','source':'कनेक्शन',
         'metrics':'एक नज़र में','records':'रिकॉर्ड','status':'मौजूदा रिपोर्टिंग स्थिति',
+        'scope':'ये फ़िल्टर सभी रिपोर्ट में लागू रहेंगे','reset':'फ़िल्टर हटाएँ','readable':'पूरा रिकॉर्ड पढ़ें',
+        'spreadsheet':'तालिका देखें','page':'पृष्ठ','of':'में से','per_page':'प्रति पृष्ठ रिकॉर्ड',
+        'village_all':'सभी पंचायत','active':'अभी देख रहे हैं',
     },
 }
 
@@ -224,6 +230,30 @@ div[data-baseweb="select"]>div{background:#fff!important;color:#283b4d!important
  .brand-tag{font-size:.53rem}
  .kpi-label{font-size:.65rem}
 }
+
+/* V5.2 UX refinement: preserve the Saarthi palette; improve reading and navigation. */
+.scope-hint{font-size:.77rem;color:#766b61;background:#fff8ef;border-left:3px solid #c68155;border-radius:7px;padding:7px 10px;margin:6px 0 12px}
+.scope-chip{display:inline-block;border-radius:100px;background:#f9ebdf;color:#8b4929;padding:5px 10px;font-weight:750;font-size:.76rem;border:1px solid #e9ccba;margin:4px 0 9px}
+.record-card{background:#fffdfb;border:1px solid #e7dfd4;border-left:3px solid #c1774d;border-radius:16px;padding:17px 18px;margin:10px 0;box-shadow:0 5px 18px rgba(47,41,36,.025);min-width:0;max-width:100%}
+.record-card .record-index{font-size:.72rem;letter-spacing:.11em;color:#ab643e;font-weight:800;text-transform:uppercase}
+.record-card .record-title{font-weight:850;font-size:1.06rem;line-height:1.55;color:#28394a;margin:6px 0 9px;overflow-wrap:anywhere;white-space:pre-wrap}
+.record-meta{display:flex;gap:6px;flex-wrap:wrap;margin:7px 0 14px}
+.record-meta .meta-pill{display:inline-flex;padding:4px 9px;color:#485c6b;background:#f6f4f1;border:1px solid #e8e1d8;border-radius:100px;font-size:.72rem;font-weight:700;overflow-wrap:anywhere}
+.record-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 16px}
+.record-field{min-width:0}
+.record-field.is-long{grid-column:1/-1;padding:11px 13px;border-radius:11px;background:#fcf6f0}
+.record-field .record-label{color:#a25c35;font-size:.72rem;font-weight:800;line-height:1.5;margin-bottom:3px}
+.record-field .record-value{color:#2c3d4a;font-size:.91rem;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.record-view-explainer{font-size:.78rem;color:#667a89;line-height:1.55;padding:8px 0}
+.stButton>button:focus-visible,[data-baseweb="select"]:focus-within{outline:3px solid #da9b75!important;outline-offset:2px!important}
+@media(max-width:700px){
+ .record-card{padding:14px 12px;border-radius:13px;margin:8px 0}
+ .record-info-grid{grid-template-columns:1fr;gap:9px}
+ .record-field.is-long{grid-column:auto;padding:11px 10px}
+ .record-card .record-title{font-size:1rem}
+ .record-field .record-value{font-size:.87rem;line-height:1.85}
+ .scope-hint{line-height:1.5;font-size:.75rem}
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -294,43 +324,149 @@ def public_rows(rows,kind):
         result.append(row)
     return result
 
+def _record_title(raw, kind):
+    for field in ({'actions':['issue','panchayat'],'daily':['name','panchayat'],
+                   'registration':['name','panchayat'],'whatsapp':['group','panchayat'],
+                   'booth':['name','panchayat'],'social':['name','panchayat']}[kind]):
+        text=str(raw.get(field,'') or '').strip()
+        if text:
+            return display_value(field,text,lang)
+    return TABS[kind]['hi' if lang=='हिंदी' else 'en']
+
+
+def readable_record_card(raw, kind, n):
+    """HTML-escaped, fully wrapping, privacy-masked record for the MP's reading view."""
+    friendly=public_rows([raw],kind)[0]
+    long_fields={'issue','action','remarks','content'}
+    long_labels={FIELD_NAMES[f][0 if lang=='English' else 1] for f in long_fields}
+    skip_labels={tr('worker'),FIELD_NAMES['date'][0 if lang=='English' else 1],
+                 FIELD_NAMES['booth'][0 if lang=='English' else 1]}
+    title=_record_title(raw,kind)
+    date=(raw.get('_date').isoformat() if raw.get('_date') else ('Undated' if lang=='English' else 'बिना तारीख'))
+    booth=normalized_booth(raw.get('booth',''))
+    badges=[person_name(raw.get('_coordinator','')),date]
+    if booth: badges.append(('Booth ' if lang=='English' else 'बूथ ')+booth)
+    badges_html=''.join(f'<span class="meta-pill">{esc(v)}</span>' for v in badges)
+    cells=[]
+    for label,val in friendly.items():
+        if label in skip_labels or val in ('',None,'—'):
+            continue
+        content=esc(val)
+        long=' is-long' if label in long_labels or len(str(val))>100 else ''
+        cells.append(f'<div class="record-field{long}"><div class="record-label">{esc(label)}</div>'
+                     f'<div class="record-value">{content}</div></div>')
+    return (f'<article class="record-card"><div class="record-index">'
+            f'{"Record" if lang=="English" else "रिकॉर्ड"} {n}</div>'
+            f'<div class="record-title">{esc(title)}</div>'
+            f'<div class="record-meta">{badges_html}</div>'
+            f'<div class="record-info-grid">{"".join(cells)}</div></article>')
+
+
 def table_export(rows,kind,key):
     st.caption(f'{len(rows):,} '+('matching records' if lang=='English' else 'रिकॉर्ड'))
-    if not rows:st.info(tr('nodata'));return
-    presented=public_rows(rows,kind)
-    st.dataframe(presented,hide_index=True,use_container_width=True,height=min(520,95+36*len(rows)))
-    st.download_button('⬇ '+tr('download'),csv_file(presented),file_name=f'saarthi_manjhanpur_{kind}_{NOW.date()}.csv',mime='text/csv',key=key)
+    if not rows:
+        st.info(tr('nodata'))
+        return
+    readable,spreadsheet=st.tabs(['📖 '+tr('readable'),'▤ '+tr('spreadsheet')])
+    with readable:
+        st.markdown('<div class="record-view-explainer">'+esc(
+            'Every observation and suggested action is shown in full. Use the page selector for more records.'
+            if lang=='English' else 'हर अवलोकन और सुझाव पूरा दिखाई देगा। अन्य रिकॉर्ड के लिए पृष्ठ चुनें।')+'</div>',unsafe_allow_html=True)
+        page_size=st.selectbox(tr('per_page'),[5,10,20],index=1,key=f'read_size_{kind}')
+        pages=max(1,(len(rows)+page_size-1)//page_size)
+        if st.session_state.get(f'read_page_{kind}',1)>pages:
+            st.session_state[f'read_page_{kind}']=1
+        current=st.selectbox(tr('page'),list(range(1,pages+1)),format_func=lambda n:f'{n} {tr("of")} {pages}',key=f'read_page_{kind}')
+        first=(current-1)*page_size
+        # Pagination is only a readability feature, not a filter on any report calculations.
+        for n,raw in enumerate(rows[first:first+page_size],first+1):
+            st.markdown(readable_record_card(raw,kind,n),unsafe_allow_html=True)
+    with spreadsheet:
+        st.caption('For a quick scan; scroll horizontally if needed. Full text is in the first tab.' if lang=='English'
+                   else 'जल्दी देखने के लिए तालिका। पूरा पाठ पहले टैब में दिखता है।')
+        presented=public_rows(rows,kind)
+        st.dataframe(presented,hide_index=True,use_container_width=True,
+                     height=min(540,120+45*len(rows)),row_height=48)
+    st.download_button('⬇ '+tr('download'),csv_file(public_rows(rows,kind)),
+                       file_name=f'saarthi_manjhanpur_{kind}_{NOW.date()}.csv',mime='text/csv',key=key)
 
 def set_page(page): st.session_state['page_v5']=page
 
+def save_report(): st.session_state['saved_report_v52']=st.session_state['report_v5']
+
+# The MP's selection is one office-wide context. Values survive switching report types/pages.
+def _persist_scope():
+    st.session_state['scope_worker_saved']=st.session_state['scope_worker_widget']
+
+
+def _persist_period():
+    st.session_state['scope_period_saved']=st.session_state['scope_period_widget']
+
+
+def reset_filters(kind=None):
+    st.session_state['scope_worker_saved']=ALL
+    st.session_state['scope_worker_widget']=ALL
+    st.session_state['scope_period_saved']='all'
+    st.session_state['scope_period_widget']='all'
+    st.session_state['scope_include_undated']=False
+    st.session_state.pop('scope_custom_dates',None)
+    if kind:
+        for suffix in ('booth','village','search'):
+            st.session_state.pop(f'extra_{kind}_{suffix}',None)
+
+
 def date_choice(key):
     opts=['all','today','yesterday','week','month','custom']
-    period=st.selectbox(tr('period'),opts,format_func=tr,key=f'{key}_period')
+    if 'scope_period_saved' not in st.session_state: st.session_state.scope_period_saved='all'
+    if 'scope_period_widget' not in st.session_state:
+        st.session_state.scope_period_widget=st.session_state.scope_period_saved
+    period=st.selectbox('Period / अवधि',opts,format_func=tr,key='scope_period_widget',on_change=_persist_period)
     today=NOW.date();low=high=None
     if period=='today':low=high=today
     elif period=='yesterday':low=high=today-dt.timedelta(days=1)
     elif period=='week':low=today-dt.timedelta(days=6);high=today
     elif period=='month':low=today-dt.timedelta(days=29);high=today
     elif period=='custom':
-        dates=st.date_input('From / To · से / तक',value=(today-dt.timedelta(days=7),today),key=f'{key}_range')
+        dates=st.date_input('From / To · से / तक',value=(today-dt.timedelta(days=7),today),key='scope_custom_dates')
         if isinstance(dates,(list,tuple)) and len(dates)==2:low,high=dates
         else:st.info('Select a start and end date / शुरू और अंतिम तारीख चुनें')
     include=False
-    if period!='all':include=st.checkbox(tr('undated'),key=f'{key}_undated',value=False)
+    if period!='all':include=st.checkbox(tr('undated'),key='scope_include_undated',value=False)
     return low,high,include
 
+
 def filters(key,kind=None):
+    if 'scope_worker_saved' not in st.session_state: st.session_state.scope_worker_saved=ALL
+    if 'scope_worker_widget' not in st.session_state:
+        st.session_state.scope_worker_widget=st.session_state.scope_worker_saved
     c1,c2=st.columns(2,gap='small')
-    with c1:person=st.selectbox(tr('worker'),[ALL]+[p['en'] for p in COORDINATORS],format_func=person_name,key=f'{key}_person')
+    with c1:
+        person=st.selectbox('Coordinator / संयोजक',[ALL]+[p['en'] for p in COORDINATORS],
+                            format_func=person_name,key='scope_worker_widget',on_change=_persist_scope)
     with c2:low,high,include=date_choice(key)
-    booth='All booths';query=''
+    st.markdown('<div class="scope-hint">'+esc(
+        'This coordinator and date selection stays active when you switch reports.'
+        if lang=='English' else 'संयोजक और तारीख का चयन अन्य रिपोर्ट खोलने पर भी बना रहेगा।')+'</div>',
+        unsafe_allow_html=True)
+    booth='All booths'; village=tr('village_all');query=''
     if kind:
+        base=[r for r in data[kind] if person==ALL or r.get('_coordinator')==person]
         with st.expander('🔎 '+tr('filter'),expanded=False):
-            options=sorted({normalized_booth(r.get('booth')) for r in data[kind] if normalized_booth(r.get('booth'))})
-            booth=st.selectbox(tr('booth'),['All booths']+options,key=f'{key}_booth')
-            q=st.text_input(tr('search'),key=f'{key}_search',placeholder='Name, village, issue… / नाम, गांव, समस्या…')
-            query=q
-    return person,low,high,include,booth,query
+            opts=sorted({normalized_booth(r.get('booth')) for r in base if normalized_booth(r.get('booth'))})
+            booth=st.selectbox(tr('booth'),['All booths']+opts,key=f'extra_{kind}_booth')
+            villages=sorted({str(r.get('panchayat','')).strip() for r in base if str(r.get('panchayat','')).strip()})
+            village=st.selectbox(tr('village'),[tr('village_all')]+villages,key=f'extra_{kind}_village')
+            query=st.text_input(tr('search'),key=f'extra_{kind}_search',
+                                placeholder='Name, village, issue… / नाम, गांव, समस्या…')
+    st.button('↺ '+tr('reset'),key=f'reset_filters_{key}',on_click=reset_filters,args=(kind,),
+              help='Clear coordinator, period and extra filters' if lang=='English' else 'सभी फ़िल्टर हटाएँ')
+    return person,low,high,include,booth,query,village
+
+
+def apply_extra_location(records,village):
+    if village in (None,'',LABEL['English']['village_all'],LABEL['हिंदी']['village_all']):
+        return records
+    return [r for r in records if str(r.get('panchayat','')).strip()==str(village).strip()]
 
 def wa_note(records):
     if any(r.get('_date') is None for r in records):
@@ -348,7 +484,8 @@ except Exception: SECRETS={}
 account=SECRETS.get('gcp_service_account')
 password=str(SECRETS.get('dashboard_password','')).strip()
 if 'page_v5' not in st.session_state:st.session_state.page_v5='home'
-if 'report_v5' not in st.session_state:st.session_state.report_v5='daily'
+if 'saved_report_v52' not in st.session_state:st.session_state.saved_report_v52='daily'
+if 'report_v5' not in st.session_state:st.session_state.report_v5=st.session_state.saved_report_v52
 if 'language_v5' not in st.session_state:st.session_state.language_v5='English'
 lang=st.session_state.language_v5
 if account and password and not st.session_state.get('office_auth_v5',False):
@@ -366,10 +503,11 @@ with st.sidebar:
     st.image(str(LOGO),width=115)
     st.markdown('### Saarthi Analytics')
     st.caption('Manjhanpur 252 · Office tools / कार्यालय सेटिंग')
-    source=st.selectbox('Data source / डेटा स्रोत', ['Live Google Sheets','Sample (fictional)','Upload XLSX (offline)'],key='source_v5')
+    if 'source_v5' not in st.session_state:st.session_state['source_v5']='Live Google Sheets'
     if st.button('🔄 '+tr('refresh'),use_container_width=True,key='reload_side_v5'):
         st.cache_data.clear();st.rerun()
-    with st.expander('🔒 Data connection / कनेक्शन'):
+    with st.expander('⚙ Office settings / कार्यालय सेटिंग'):
+        source=st.selectbox('Data source / डेटा स्रोत', ['Live Google Sheets','Sample (fictional)','Upload XLSX (offline)'],key='source_v5')
         if st.button('View connection status',key='goto_health_v5',use_container_width=True,on_click=set_page,args=('health',)):
             pass
         st.caption('9 original sheets · 54 report tabs')
@@ -412,7 +550,7 @@ brand_header()
 nav1,nav2=st.columns([2.2,1],gap='small')
 with nav1:
     page=st.selectbox(
-        'Open page / पेज चुनें', PAGES + ['health'],
+        'Open page / पेज चुनें', PAGES + (['health'] if st.session_state.get('page_v5')=='health' else []),
         format_func=lambda p: ('⚙ '+tr('health') if p=='health' else {
             'home':'⌂ '+tr('home'), 'reports':'▣ '+tr('reports'),
             'dates':'▤ '+tr('dates'), 'team':'♙ '+tr('team')}[p]),
@@ -444,6 +582,7 @@ if page=='home':
        </div>''',unsafe_allow_html=True)
     heading(tr('metrics'))
     who,low,high,include,*_=filters('home')
+    st.markdown(f'<span class="scope-chip">{esc(tr("active"))}: {esc(person_name(who))}</span>',unsafe_allow_html=True)
     if loaded:
         picked={kind:filter_rows(data[kind],who,low,high,include) for kind in TABS}
         summary={kind:summarize_section(picked[kind],kind) for kind in TABS}
@@ -481,10 +620,12 @@ if page=='home':
 
 elif page=='reports':
     hero(tr('reports'),'Select one report, apply filters, then view charts and records.' if lang=='English' else 'रिपोर्ट चुनें, फिल्टर लगाएँ और ग्राफ तथा रिकॉर्ड देखें।')
-    kind=st.selectbox(tr('section'),list(TABS),format_func=lambda k:TABS[k]['hi' if lang=='हिंदी' else 'en'],key='report_v5')
-    who,low,high,include,booth,query=filters('reports_'+kind,kind)
+    kind=st.selectbox(tr('section'),list(TABS),format_func=lambda k:TABS[k]['hi' if lang=='हिंदी' else 'en'],key='report_v5',on_change=save_report)
+    st.caption('Your coordinator selection will stay the same when you change reports.' if lang=='English' else 'रिपोर्ट बदलने पर आपका चुना हुआ संयोजक नहीं बदलेगा।')
+    who,low,high,include,booth,query,village=filters('reports_'+kind,kind)
+    st.markdown(f'<span class="scope-chip">{esc(tr("active"))}: {esc(person_name(who))}</span>',unsafe_allow_html=True)
     if loaded:
-        records=filter_rows(data[kind],who,low,high,include,query=query,booth=booth)
+        records=apply_extra_location(filter_rows(data[kind],who,low,high,include,query=query,booth=booth),village)
         summary=summarize_section(records,kind)
         pairs=[(tr('entries'),summary['records']),(tr('unknown'),summary['undated'])]
         if kind=='whatsapp':pairs += [(tr('wa'),summary['additions']),(tr('groups'),summary['groups'])]
