@@ -1,4 +1,4 @@
-"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.3 Table UX.
+"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.4.1 Solar Light — table-first.
 Read-only reporting from the same nine original Google Sheets as V4.
 No credentials or private data are bundled in this repository.
 """
@@ -24,6 +24,7 @@ from data_layer import (
     stats, mask_phone, normalized_booth, to_int, display_value,
 )
 from view_logic import trend, coordinator_activity, category_counts, group_summary, summarize_section, daily_matrix
+from solar_layer import SOLAR_SHEET_URL, load_solar_online, solar_summary, solar_villages, solar_filter, masked_phone
 
 ROOT = Path(__file__).resolve().parent
 LOGO = ROOT / "assets" / "saarthi-logo.png"
@@ -41,6 +42,7 @@ except (AttributeError, TypeError):
 NOW = dt.datetime.now(ZoneInfo("Asia/Kolkata"))
 ALL = "All Coordinators"
 PAGES = ["home", "reports", "dates", "team"]
+SOLAR_LABEL = {"English":"Solar Light Verification", "हिंदी":"सोलर लाइट सत्यापन"}
 # Stable local portraits from the office dashboard's previously shared visual reference.
 # Avoid external image hotlink failures on iPhones and other browsers.
 def local_img_uri(name: str) -> str:
@@ -311,6 +313,17 @@ div[data-baseweb="select"]>div{background:#fff!important;color:#283b4d!important
  .sa-nav-help{font-size:.7rem}
 }
 
+/* V5.4: shared solar verification table inherits the Saarthi cream/saffron identity. */
+.solar-progress-track{background:#f4e9dd;border-radius:99px;height:14px;overflow:hidden;margin:10px 0 16px}
+.solar-progress-fill{height:100%;background:#43867b;border-radius:99px}
+.solar-note{background:#fff6eb;color:#705037;border:1px solid #ead5bc;border-radius:12px;padding:11px 14px;font-size:.83rem;line-height:1.65;margin:10px 0}
+.solar-table .sa-wrap-table{min-width:750px}
+.solar-table .sa-wrap-table th:nth-child(2),.solar-table .sa-wrap-table td:nth-child(2){width:21%}
+.solar-table .sa-wrap-table th:nth-child(3),.solar-table .sa-wrap-table td:nth-child(3){width:33%}
+.solar-done{color:#267160;font-weight:800}
+.solar-open{color:#9a5c38;font-weight:700}
+@media(max-width:700px){.solar-table .sa-wrap-table{min-width:0}.solar-table .sa-table-desktop{display:none}.solar-table .sa-table-mobile{display:block}}
+
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -538,6 +551,139 @@ def table_export(rows,kind,key):
     st.download_button('⬇ '+tr('download'),csv_file(public_rows(rows,kind)),
                        file_name=f'saarthi_manjhanpur_{kind}_{NOW.date()}.csv',mime='text/csv',key=key)
 
+
+def _solar_table(rows, lang, narrow=False):
+    """Escaped, wrapped HTML table. No single-record cards; phones get 2 columns."""
+    en = lang == 'English'
+    headers=(['Location / स्थल','Verification / सत्यापन'] if narrow else
+             (['No.','Village','Installation site','Contact','Status'] if en else
+              ['क्र.','ग्राम','स्थल का नाम','संपर्क नाम','स्थिति']))
+    head=''.join('<th scope="col">'+esc(x)+'</th>' for x in headers)
+    cells=[]
+    for r in rows:
+        status=('Done' if r['done'] else 'Not marked Done') if en else ('पूर्ण (Done)' if r['done'] else 'Done दर्ज नहीं')
+        status_html=f'<span class="{"solar-done" if r["done"] else "solar-open"}">{esc(status)}</span>'
+        if narrow:
+            first=('<strong>'+esc(r['village'])+'</strong><br>'+esc(r['site'])+'<br><small>#'+esc(r['serial'])+'</small>')
+            second=(status_html+'<br><small>'+esc(r['contact'])+'</small>')
+            values=[first,second]
+        else:
+            values=[esc(r['serial']),esc(r['village']),esc(r['site']),esc(r['contact']),status_html]
+        cells.append('<tr>'+''.join('<td>'+v+'</td>' for v in values)+'</tr>')
+    mobile='sa-table-mobile' if narrow else 'sa-table-desktop'
+    return ('<div class="sa-table-shell '+mobile+' solar-table" role="region" tabindex="0" '
+            'aria-label="Solar light verification table"><table class="sa-wrap-table"><thead><tr>'+head+
+            '</tr></thead><tbody>'+''.join(cells)+'</tbody></table></div>')
+
+
+def solar_report(rows, accessible, error):
+    """Show the shared team's verification TABLE first, followed by visual analysis."""
+    hero(SOLAR_LABEL[lang],
+         'Shared team verification — based on the single original Solar Light Google Sheet.' if lang=='English'
+         else 'पूरी टीम की साझा सत्यापन रिपोर्ट — मूल गूगल शीट के आधार पर।')
+    st.link_button('↗ '+('Open original Google Sheet' if lang=='English' else 'मूल गूगल शीट खोलें'),
+                   SOLAR_SHEET_URL, use_container_width=False)
+    if not accessible:
+        st.warning(('Solar Light source is not connected. Share the Solar Light spreadsheet with the '
+                    'existing service-account email as Viewer, then select Refresh data. The other nine '
+                    'coordinator sheets will continue working.') if lang=='English' else
+                   'सोलर शीट कनेक्ट नहीं है। मौजूदा सर्विस अकाउंट को इस शीट पर Viewer एक्सेस दें और रीफ़्रेश करें।')
+        if error:st.caption(str(error)[:240])
+        return
+
+    # Filters are followed immediately by the table (not charts or KPI cards).
+    st.markdown('### '+('Find verification records' if lang=='English' else 'सत्यापन रिकॉर्ड खोजें'))
+    a,b=st.columns(2,gap='small')
+    villages=sorted({r['village'] for r in rows if r['village']})
+    with a:
+        village=st.selectbox('Village / ग्राम',['All villages']+villages,
+                             format_func=lambda s:('सभी गांव' if s=='All villages' and lang=='हिंदी' else s),
+                             key='solar_village_v54')
+    with b:
+        status=st.selectbox('Verification status / सत्यापन स्थिति',['All','Done','Not marked Done'],
+                            format_func=lambda s:{'All':'सभी','Done':'पूर्ण (Done)','Not marked Done':'Done दर्ज नहीं'}[s] if lang=='हिंदी' else s,
+                            key='solar_status_v54')
+    search=st.text_input('Search serial, village, site or name / क्रमांक, गांव, स्थल या नाम खोजें',
+                         key='solar_search_v54',placeholder='e.g. बरौला, school, 101')
+    filtered=solar_filter(rows,village,status,search)
+    filtered_summary=solar_summary(filtered)
+    heading('📋 '+('Verification records' if lang=='English' else 'सत्यापन रिकॉर्ड तालिका'))
+    st.caption((f'{filtered_summary["total"]} matching locations · {filtered_summary["done"]} marked Done'
+               if lang=='English' else
+               f'{filtered_summary["total"]} स्थल मिले · {filtered_summary["done"]} Done दर्ज'))
+
+    if not filtered:
+        st.info(tr('nodata'))
+    else:
+        controls_1,controls_2=st.columns([1.1,1.6],gap='small')
+        with controls_1:
+            psize=st.selectbox('Rows per page / प्रति पृष्ठ',[10,20,50],index=1,key='solar_page_size_v54')
+        pages=max(1,(len(filtered)+psize-1)//psize)
+        if st.session_state.get('solar_page_v54',1)>pages:
+            st.session_state['solar_page_v54']=1
+        with controls_2:
+            current_solar_slice=(st.selectbox(tr('page'),list(range(1,pages+1)),
+                                format_func=lambda x:f'{x} / {pages}',key='solar_page_v54')
+                                if pages>1 else 1)
+        batch=filtered[(current_solar_slice-1)*psize:current_solar_slice*psize]
+        # Two responsive presentations of the same records: a full desktop table
+        # and a mobile two-column table; CSS hides whichever does not fit.
+        st.markdown(_solar_table(batch,lang,False),unsafe_allow_html=True)
+        st.markdown(_solar_table(batch,lang,True),unsafe_allow_html=True)
+        st.caption(f'{(current_solar_slice-1)*psize+1}–{min(current_solar_slice*psize,len(filtered))} / {len(filtered)}')
+        export=[{'Serial / क्रमांक':r['serial'],'Village / ग्राम':r['village'],'Site / स्थल':r['site'],
+                 'Contact / नाम':r['contact'],'Phone (masked) / मोबाइल':masked_phone(r['phone']),
+                 'Status / स्थिति':('Done' if r['done'] else 'Not marked Done')}
+                for r in filtered]
+        st.download_button('⬇ '+tr('download'),csv_file(export),
+                           file_name='saarthi_solar_light_verification.csv',mime='text/csv',key='solar_export_v54')
+
+    st.divider()
+    heading('📊 '+('Verification progress & charts' if lang=='English' else 'सत्यापन प्रगति और ग्राफ'))
+    # Totals reflect the current village/status/search filters, for consistency
+    # with the table immediately above. Provide the overall scale separately.
+    metric_cards([
+        ('Locations / स्थल',filtered_summary['total']),
+        ('Marked Done / पूर्ण',filtered_summary['done']),
+        ('Not marked Done / शेष',filtered_summary['unmarked']),
+        ('Done percentage / पूर्ण %',str(filtered_summary['pct'])+'%'),
+    ])
+    st.markdown('<div class="solar-progress-track" role="progressbar" aria-valuenow="'+esc(filtered_summary['pct'])+'" '
+                'aria-valuemin="0" aria-valuemax="100"><div class="solar-progress-fill" style="width:'+esc(filtered_summary['pct'])+'%"></div></div>',
+                unsafe_allow_html=True)
+    if filtered:
+        st.markdown('#### '+('Verification status' if lang=='English' else 'सत्यापन की स्थिति'))
+        status_rows=[{'Status': 'Done' if lang=='English' else 'पूर्ण', 'Count':filtered_summary['done']},
+                     {'Status': 'Not marked Done' if lang=='English' else 'शेष', 'Count':filtered_summary['unmarked']}]
+        chart=alt.Chart(pd.DataFrame(status_rows)).mark_bar(cornerRadiusEnd=5).encode(
+            x=alt.X('Count:Q',title=None), y=alt.Y('Status:N',title=None,sort=None),
+            color=alt.Color('Status:N',scale=alt.Scale(domain=[v['Status'] for v in status_rows],range=['#43867b','#c89168']),legend=None),
+            tooltip=['Status','Count']).properties(height=115)
+        st.altair_chart(chart,use_container_width=True)
+        village_summary=solar_villages(filtered)
+        if village_summary:
+            heading('Top villages by listed locations / ग्रामवार स्थल')
+            top=village_summary[:12]
+            graph=alt.Chart(pd.DataFrame([{'Village':r['village'],'Total':r['total'],'Done':r['done']} for r in top])).mark_bar(
+                color=PALETTE['orange'],cornerRadiusEnd=5).encode(
+                x=alt.X('Total:Q',title='Listed locations'),
+                y=alt.Y('Village:N',sort='-x',title=None,axis=alt.Axis(labelLimit=200)),
+                tooltip=['Village','Total','Done']).properties(height=max(210,len(top)*29))
+            st.altair_chart(graph,use_container_width=True)
+            st.dataframe([{'Village / ग्राम':v['village'],'Total / कुल':v['total'],'Done':v['done'],
+                           'Not marked Done / शेष':v['unmarked'],'Done %':v['percent']} for v in village_summary],
+                         hide_index=True,use_container_width=True)
+    else:
+        st.info(tr('nodata'))
+    st.caption('All-time total across the shared sheet: '+str(solar_summary(rows)['total'])+' listed locations.' if lang=='English'
+               else 'साझा शीट में कुल '+str(solar_summary(rows)['total'])+' स्थल दर्ज हैं।')
+    st.markdown('<div class="solar-note">'+esc(
+        'The sheet has no date or coordinator columns. “Done” means marked Done in the source, not independently verified installation.'
+        if lang=='English' else
+        'इस शीट में तारीख या संयोजक कॉलम नहीं है। “Done” का अर्थ मूल शीट में दर्ज स्थिति है, स्वतंत्र स्थापना सत्यापन नहीं।')+'</div>',
+        unsafe_allow_html=True)
+
+
 def set_page(page):
     st.session_state['page_v5']=page
 
@@ -546,7 +692,7 @@ def set_report(kind):
     """Callback updates report context before any widgets are rendered.
     Deliberately leaves coordinator, period and location filters untouched.
     """
-    if kind not in TABS:
+    if kind not in TABS and kind != "solar":
         return
     st.session_state['report_v5']=kind
     st.session_state['saved_report_v52']=kind
@@ -581,18 +727,19 @@ def report_navigation():
     """Two-column button grid: six reporting sections, no dropdown to reopen."""
     icons={
         'daily':'📅','registration':'👥','whatsapp':'💬',
-        'actions':'📝','booth':'🗳️','social':'📱',
+        'actions':'📝','booth':'🗳️','social':'📱','solar':'☀️',
     }
-    keys=list(TABS)
+    keys=list(TABS)+["solar"]
     st.markdown('<div class="sa-nav-label">'+esc(
         'Choose a reporting section / रिपोर्ट चुनें'
     )+'</div>',unsafe_allow_html=True)
     for start in range(0,len(keys),2):
         pair=keys[start:start+2]
-        cols=st.columns(2,gap='small')
+        cols=st.columns(1 if len(pair)==1 else 2,gap='small')
         for column,key in zip(cols,pair):
             with column:
-                st.button(f'{icons[key]} {TABS[key]["hi" if lang=="हिंदी" else "en"]}',
+                report_label=SOLAR_LABEL[lang] if key=='solar' else TABS[key]['hi' if lang=='हिंदी' else 'en']
+                st.button(f'{icons[key]} {report_label}', 
                           key=f'report_btn_{key}',on_click=set_report,args=(key,),
                           type='primary' if st.session_state.get('report_v5')==key else 'secondary',
                           use_container_width=True)
@@ -718,6 +865,9 @@ with st.sidebar:
                 f'target="_blank" rel="noopener noreferrer">📄 {esc(member["en"])}</a>',
                 unsafe_allow_html=True,
             )
+    with st.expander('☀ Solar Light verification / सोलर लाइट शीट', expanded=False):
+        st.markdown(f'<a href="{esc(SOLAR_SHEET_URL)}" target="_blank" rel="noopener noreferrer">'
+                    '📄 Solar Light verification Manjhanpur</a>',unsafe_allow_html=True)
     if st.button('🔄 '+tr('refresh'),use_container_width=True,key='reload_side_v5'):
         st.cache_data.clear();st.rerun()
     with st.expander('⚙ Office settings / कार्यालय सेटिंग'):
@@ -753,6 +903,16 @@ else:
         data,health=load_snapshots(files)
         loaded=any(t.get('ok') for t in health)
 
+# The shared Solar Light source is independent from the 9 × 6 coordinator feeds.
+solar_rows=[];solar_connected=False;solar_error=None
+if source=='Live Google Sheets' and account and password:
+    @st.cache_data(ttl=48,show_spinner='Checking shared Solar Light verification sheet…')
+    def solar_online(_account): return load_solar_online(_account)
+    try:
+        solar_rows=solar_online(account)
+        solar_connected=True
+    except Exception as exc:
+        solar_error=f'{type(exc).__name__}: {exc}'
 connected=sum(1 for entry in health if entry.get('ok'))
 total=len(COORDINATORS)*len(TABS)
 
@@ -800,6 +960,15 @@ if page=='home':
                       (tr('observations'),summary['actions']['records']),
                       (tr('entries'),sum(summary[k]['records'] for k in TABS))],
                      'As reported / दर्ज रिपोर्ट')
+        # Shared-team verification is not attributed to the 9 individual coordinators.
+        if solar_connected:
+            solar_stats=solar_summary(solar_rows)
+            heading('☀ '+SOLAR_LABEL[lang])
+            metric_cards([('Solar sites / सोलर स्थल',solar_stats['total']),
+                          ('Marked Done / पूर्ण',solar_stats['done']),
+                          ('Not marked Done / शेष',solar_stats['unmarked'])])
+            st.button('☀ '+('Open Solar Light Verification' if lang=='English' else 'सोलर सत्यापन खोलें'),
+                      on_click=set_report,args=('solar',),key='solar_home_btn',use_container_width=True)
         wa_note(picked['whatsapp'])
         left,right=st.columns([1,1],gap='medium')
         everyone=[r for kind in TABS for r in picked[kind]]
@@ -826,41 +995,44 @@ if page=='home':
         if failure:st.caption(failure)
 
 elif page=='reports':
-    hero(tr('reports'),'Select one report, apply filters, then view charts and records.' if lang=='English' else 'रिपोर्ट चुनें, फिल्टर लगाएँ और ग्राफ तथा रिकॉर्ड देखें।')
     kind=report_navigation()
-    st.markdown('<div class="sa-selected-report">'+esc(TABS[kind]['hi' if lang=='हिंदी' else 'en'])+'</div>',unsafe_allow_html=True)
-    st.caption('Your coordinator selection will stay the same when you change reports.' if lang=='English' else 'रिपोर्ट बदलने पर आपका चुना हुआ संयोजक नहीं बदलेगा।')
-    who,low,high,include,booth,query,village=filters('reports_'+kind,kind)
-    st.markdown(f'<span class="scope-chip">{esc(tr("active"))}: {esc(person_name(who))}</span>',unsafe_allow_html=True)
-    if loaded:
-        records=apply_extra_location(filter_rows(data[kind],who,low,high,include,query=query,booth=booth),village)
-        summary=summarize_section(records,kind)
-        pairs=[(tr('entries'),summary['records']),(tr('unknown'),summary['undated'])]
-        if kind=='whatsapp':pairs += [(tr('wa'),summary['additions']),(tr('groups'),summary['groups'])]
-        else:pairs += [(tr('booths'),summary['booths']),(tr('worker'),summary['coordinators'])]
-        metric_cards(pairs)
-        if kind=='whatsapp':
-            wa_note(records)
-            st.caption('Group count deduplicated by link/ID when available; additions are reported events, not proven unique individuals.' if lang=='English' else 'ग्रुप लिंक/नाम अनुसार अलग गिने जाते हैं। नए सदस्य की एंट्री अलग व्यक्ति होने का प्रमाण नहीं है।')
-        graph_tab,rows_tab=st.tabs(['📊 '+tr('charts'),'📋 '+tr('table')])
-        with graph_tab:
-            c1,c2=st.columns(2,gap='medium')
-            with c1:
-                heading(tr('byworker'))
-                if not make_chart(coordinator_activity(records,kind,lang),'Coordinator','Value',horizontal=True,height=285):st.info(tr('nodata'))
-            with c2:
-                heading(tr('bydate'))
-                if not make_chart(trend(records,kind),'Date','Value',mode='line',height=285):st.info(tr('nodates'))
-            category_field={'registration':'status','actions':'type','booth':'status','social':'platform','daily':'panchayat','whatsapp':'status'}.get(kind)
-            categories=category_counts(records,category_field,lang) if category_field else []
-            if categories:
-                heading(FIELD_NAMES.get(category_field,('Category','श्रेणी'))[0 if lang=='English' else 1])
-                make_chart(categories,'Category','Value',horizontal=True,height=min(340,max(150,35*len(categories))),color=PALETTE['sage'])
+    if kind=='solar':
+        solar_report(solar_rows,solar_connected,solar_error)
+    else:
+        hero(tr('reports'),'Select one report, apply filters, then view charts and records.' if lang=='English' else 'रिपोर्ट चुनें, फिल्टर लगाएँ और ग्राफ तथा रिकॉर्ड देखें।')
+        st.markdown('<div class="sa-selected-report">'+esc(TABS[kind]['hi' if lang=='हिंदी' else 'en'])+'</div>',unsafe_allow_html=True)
+        st.caption('Your coordinator selection will stay the same when you change reports.' if lang=='English' else 'रिपोर्ट बदलने पर आपका चुना हुआ संयोजक नहीं बदलेगा।')
+        who,low,high,include,booth,query,village=filters('reports_'+kind,kind)
+        st.markdown(f'<span class="scope-chip">{esc(tr("active"))}: {esc(person_name(who))}</span>',unsafe_allow_html=True)
+        if loaded:
+            records=apply_extra_location(filter_rows(data[kind],who,low,high,include,query=query,booth=booth),village)
+            summary=summarize_section(records,kind)
+            pairs=[(tr('entries'),summary['records']),(tr('unknown'),summary['undated'])]
+            if kind=='whatsapp':pairs += [(tr('wa'),summary['additions']),(tr('groups'),summary['groups'])]
+            else:pairs += [(tr('booths'),summary['booths']),(tr('worker'),summary['coordinators'])]
+            metric_cards(pairs)
             if kind=='whatsapp':
-                heading('WhatsApp group summary / ग्रुप सारांश')
-                st.dataframe(group_summary(records,lang),hide_index=True,use_container_width=True)
-        with rows_tab:table_export(records,kind,'export_'+kind)
-    else:st.info('No live source connected yet.' if lang=='English' else 'लाइव स्रोत अभी जुड़ा नहीं है।')
+                wa_note(records)
+                st.caption('Group count deduplicated by link/ID when available; additions are reported events, not proven unique individuals.' if lang=='English' else 'ग्रुप लिंक/नाम अनुसार अलग गिने जाते हैं। नए सदस्य की एंट्री अलग व्यक्ति होने का प्रमाण नहीं है।')
+            graph_tab,rows_tab=st.tabs(['📊 '+tr('charts'),'📋 '+tr('table')])
+            with graph_tab:
+                c1,c2=st.columns(2,gap='medium')
+                with c1:
+                    heading(tr('byworker'))
+                    if not make_chart(coordinator_activity(records,kind,lang),'Coordinator','Value',horizontal=True,height=285):st.info(tr('nodata'))
+                with c2:
+                    heading(tr('bydate'))
+                    if not make_chart(trend(records,kind),'Date','Value',mode='line',height=285):st.info(tr('nodates'))
+                category_field={'registration':'status','actions':'type','booth':'status','social':'platform','daily':'panchayat','whatsapp':'status'}.get(kind)
+                categories=category_counts(records,category_field,lang) if category_field else []
+                if categories:
+                    heading(FIELD_NAMES.get(category_field,('Category','श्रेणी'))[0 if lang=='English' else 1])
+                    make_chart(categories,'Category','Value',horizontal=True,height=min(340,max(150,35*len(categories))),color=PALETTE['sage'])
+                if kind=='whatsapp':
+                    heading('WhatsApp group summary / ग्रुप सारांश')
+                    st.dataframe(group_summary(records,lang),hide_index=True,use_container_width=True)
+            with rows_tab:table_export(records,kind,'export_'+kind)
+        else:st.info('No live source connected yet.' if lang=='English' else 'लाइव स्रोत अभी जुड़ा नहीं है।')
 
 elif page=='dates':
     hero(tr('dates'),'Date-by-date reporting; WhatsApp additions are a separate measure.' if lang=='English' else 'दिनांकवार रिपोर्ट। व्हॉट्सऐप नए सदस्य अलग आँकड़ा है।')
@@ -920,8 +1092,18 @@ elif page=='team':
     else:st.info(tr('nodata'))
 
 elif page=='health':
-    hero(tr('health'),'Office-only diagnostic view · Nine Sheets × six reporting sections')
+    hero(tr('health'),'Office-only diagnostic view · Nine coordinator sheets × six reporting sections + one shared Solar sheet')
     metric_cards([('Readable tabs',connected if loaded else '—'),('Expected tabs',total),('Google Sheets',len(COORDINATORS)),('Undated records',sum(r.get('undated',0) for r in health))])
+    heading('☀ '+SOLAR_LABEL[lang])
+    if source!='Live Google Sheets':
+        st.caption('Solar Light is a LIVE-only source; offline coordinator snapshots do not include it.')
+    elif solar_connected:
+        ss=solar_summary(solar_rows)
+        st.success(f'Connected · {ss["total"]} listed locations · {ss["done"]} marked Done')
+    else:
+        st.warning('Shared Solar Light source not connected. Grant the same service account Viewer access to the Solar Light Google Sheet.')
+        if solar_error:st.caption(str(solar_error)[:240])
+    st.link_button('Open shared Solar Light sheet',SOLAR_SHEET_URL)
     if health:
         public_health=[{**x,'detail':str(x.get('detail',''))[:240]} for x in health]
         st.dataframe(public_health,hide_index=True,use_container_width=True,height=480)
