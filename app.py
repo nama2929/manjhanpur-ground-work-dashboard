@@ -1,4 +1,4 @@
-"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.2 UX.
+"""Saarthi Analytics | Manjhanpur 252 Constituency Operations V5.3 Table UX.
 Read-only reporting from the same nine original Google Sheets as V4.
 No credentials or private data are bundled in this repository.
 """
@@ -31,7 +31,7 @@ FAVICON = ROOT / "assets" / "saarthi-favicon.png"
 LOGO_URI = 'data:image/png;base64,' + base64.b64encode(LOGO.read_bytes()).decode('ascii')
 st.set_page_config(
     page_title="Saarthi Analytics | Manjhanpur 252",
-    page_icon=str(FAVICON), layout="wide", initial_sidebar_state="collapsed",
+    page_icon=str(FAVICON), layout="wide", initial_sidebar_state="auto",
 )
 try:
     st.logo(str(LOGO), icon_image=str(FAVICON), size="large")
@@ -254,6 +254,63 @@ div[data-baseweb="select"]>div{background:#fff!important;color:#283b4d!important
  .record-field .record-value{font-size:.87rem;line-height:1.85}
  .scope-hint{line-height:1.5;font-size:.75rem}
 }
+/* V5.3: refined full-text tables, not individually stacked record cards. */
+.sa-table-note{font-size:.83rem;line-height:1.6;color:#596d7d;margin:5px 0 12px}
+.sa-table-shell{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #e6ddd2;border-radius:15px;background:#fff;box-shadow:0 4px 16px rgba(47,41,36,.02);margin:7px 0 14px}
+.sa-wrap-table{border-collapse:separate;border-spacing:0;width:100%;min-width:800px;table-layout:fixed;font-size:.85rem;color:#2b3d4c}
+.sa-wrap-table thead th{position:sticky;top:0;z-index:1;background:#f5ede6;color:#70482e;font-weight:800;font-size:.77rem;text-align:left;letter-spacing:.005em;padding:12px 13px;border-bottom:1px solid #e2d5c8;vertical-align:middle}
+.sa-wrap-table td{padding:13px 13px;vertical-align:top;line-height:1.75;border-bottom:1px solid #eee8e1;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;hyphens:auto}
+.sa-wrap-table tbody tr:nth-child(even){background:#fdfaf6}
+.sa-wrap-table tbody tr:hover{background:#fff4e9}
+.sa-wrap-table tbody tr:last-child td{border-bottom:0}
+.sa-wrap-table th.sa-long,.sa-wrap-table td.sa-long{width:29%;min-width:210px}
+.sa-wrap-table th.sa-small,.sa-wrap-table td.sa-small{width:9%}
+.sa-wrap-table th.sa-meta,.sa-wrap-table td.sa-meta{width:15%}
+.sa-table-shell:focus-visible{outline:3px solid #c98652;outline-offset:3px}
+.sa-cell-quiet{font-size:.72rem;color:#73808a;line-height:1.55}
+.sa-cell-strong{font-weight:750;color:#324456}
+.sa-table-mobile{display:none}
+.sa-wrap-table.sa-all-fields{min-width:1500px;table-layout:auto}
+.sa-wrap-table.sa-all-fields th.sa-long,.sa-wrap-table.sa-all-fields td.sa-long{min-width:290px;max-width:460px}
+.sa-table-counter{color:#5a6e7b;font-size:.83rem;font-weight:700;padding:8px 0 4px}
+@media(max-width:700px){
+ .sa-table-desktop{display:none!important}
+ .sa-table-mobile{display:block}
+ .sa-table-mobile .sa-wrap-table{min-width:0;width:100%;table-layout:fixed;font-size:.78rem}
+ .sa-table-mobile th.sa-long,.sa-table-mobile td.sa-long{width:67%;min-width:0}
+ .sa-table-mobile th.sa-meta,.sa-table-mobile td.sa-meta{width:33%;min-width:0}
+ .sa-wrap-table thead th{font-size:.72rem;padding:9px 10px}
+ .sa-wrap-table td{padding:10px;line-height:1.7}
+ .sa-wrap-table th.sa-long,.sa-wrap-table td.sa-long{width:34%;min-width:150px}
+ .sa-wrap-table th.sa-meta,.sa-wrap-table td.sa-meta{width:32%;min-width:135px}
+ .sa-table-note{font-size:.76rem}
+ .sa-detail-title{font-weight:800;color:#a35d36;display:block;margin:0 0 3px}
+ .sa-mobile-details{display:grid;gap:11px}
+ .sa-detail-text{display:block;white-space:pre-wrap;overflow-wrap:anywhere;color:#273846}
+}
+
+/* V5.3: direct report buttons and high-contrast selected state. */
+.stMain .stButton > button[kind="primary"],
+.stMain button[data-testid="stBaseButton-primary"]{
+ background:#a95127!important;color:#fff!important;border:2px solid #a95127!important;
+ box-shadow:0 3px 10px rgba(120,67,37,.14)!important;
+}
+.stMain .stButton > button[kind="primary"]:hover,
+.stMain button[data-testid="stBaseButton-primary"]:hover{background:#863d1f!important;color:white!important}
+.stMain .stButton > button{
+ white-space:normal!important;overflow-wrap:anywhere!important;
+ text-align:center!important;line-height:1.35!important;min-height:53px!important;
+}
+.sa-nav-label{font-size:.81rem;font-weight:800;color:#786354;margin:10px 0 6px;letter-spacing:.01em}
+.sa-nav-help{font-size:.78rem;color:#73808a;margin:4px 0 10px;line-height:1.5}
+.sa-selected-report{border-left:4px solid #b96532;background:#fff8f0;border-radius:9px;
+ padding:9px 12px;font-weight:800;color:#8b4826;margin:12px 0 7px}
+@media(max-width:700px){
+ .stMain .stButton > button{min-height:55px!important;font-size:.83rem!important;padding:.48rem .30rem!important}
+ .sa-nav-label{font-size:.76rem;margin:7px 0 4px}
+ .sa-nav-help{font-size:.7rem}
+}
+
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -362,37 +419,185 @@ def readable_record_card(raw, kind, n):
             f'<div class="record-info-grid">{"".join(cells)}</div></article>')
 
 
+def _table_label(field):
+    """Translate a source field name without changing the stored record."""
+    return FIELD_NAMES[field][0 if lang == 'English' else 1]
+
+
+def _wrapped_table_html(records, kind, all_columns=False, mobile=False):
+    """Make a real HTML table with UNTRUNCATED, safely escaped text.
+
+    Phone fields are masked by public_rows; WhatsApp invite URLs stay hidden.
+    The mobile projection retains the primary text and context in three columns.
+    """
+    friendly = public_rows(records, kind)
+    if not friendly:
+        return ''
+    if mobile and not all_columns:
+        mobile_primary = {
+            'actions':'issue','daily':'name','registration':'name',
+            'whatsapp':'group','booth':'name','social':'name',
+        }[kind]
+        mobile_secondary = {
+            'actions':['action'], 'daily':['remarks'],
+            'registration':['role','status'], 'whatsapp':['additions','status'],
+            'booth':['role','status'], 'social':['platform','followers','content'],
+        }[kind]
+        labels = [('location','Coordinator · Booth / संयोजक · बूथ'),
+                  ('details','Record details / रिकॉर्ड विवरण')]
+    else:
+        core = {
+            'actions':['date','panchayat','booth','issue','action','type'],
+            'daily':['date','panchayat','booth','name','remarks'],
+            'registration':['date','panchayat','booth','name','role','status'],
+            'whatsapp':['date','panchayat','booth','group','additions','status'],
+            'booth':['date','panchayat','booth','name','role','status'],
+            'social':['date','panchayat','name','platform','followers','content'],
+        }[kind]
+        if all_columns:
+            core=list(SECTION_FIELDS[kind])
+        labels=[('coordinator',tr('worker'))]+[(f,_table_label(f)) for f in core]
+
+    heading_html=''.join(
+        f'<th scope="col" class="{("sa-long" if key in ("issue","action","remarks","content","details") else "sa-meta" if key in ("coordinator","location","name","panchayat") else "sa-small")}">{esc(label)}</th>'
+        for key,label in labels
+    )
+    out=[]
+    for row in friendly:
+        if mobile and not all_columns:
+            meta_parts=[f'<span class="sa-cell-strong">{esc(row.get(tr("worker"),""))}</span>']
+            for field in ('date','panchayat','booth'):
+                val=row.get(_table_label(field),'')
+                if val not in ('',None,'—'):
+                    meta_parts.append(f'<span class="sa-cell-quiet">{esc(_table_label(field))}: {esc(val)}</span>')
+            detail_fields=[mobile_primary]+mobile_secondary
+            details=[]
+            for f in detail_fields:
+                value=row.get(_table_label(f),'')
+                if value in ('',None,'—'):continue
+                details.append(f'<span class="sa-cell-quiet sa-detail-title">{esc(_table_label(f))}</span>'
+                               f'<span class="sa-detail-text">{esc(value)}</span>')
+            values={'location':'\n'.join(meta_parts),
+                    'details':'<div class="sa-mobile-details">'+''.join(details)+'</div>'}
+            # All values inside HTML are individually escaped.
+            data=[values.get(k,'') for k,_ in labels]
+        else:
+            data=[esc(row.get(tr('worker'),'')) if key=='coordinator'
+                  else esc(row.get(_table_label(key),'')) for key,_ in labels]
+        out.append('<tr>'+''.join(
+            f'<td class="{("sa-long" if key in ("issue","action","remarks","content","details") else "sa-meta" if key in ("coordinator","location","name","panchayat") else "sa-small")}">{val}</td>'
+            for (key,_),val in zip(labels,data)
+        )+'</tr>')
+    extra='sa-all-fields' if all_columns else ''
+    position='sa-table-all' if all_columns else ('sa-table-mobile' if mobile else 'sa-table-desktop')
+    caption=('Detailed reporting records / विस्तृत रिपोर्ट रिकॉर्ड')
+    return (f'<div class="sa-table-shell {position}" role="region" tabindex="0" aria-label="{esc(caption)}">'
+            f'<table class="sa-wrap-table {extra}"><thead><tr>{heading_html}</tr></thead>'
+            f'<tbody>{"".join(out)}</tbody></table></div>')
+
+
 def table_export(rows,kind,key):
-    st.caption(f'{len(rows):,} '+('matching records' if lang=='English' else 'रिकॉर्ड'))
+    """One primary, fully wrapped TABLE. Never force a record-by-record card view."""
+    total=len(rows)
+    st.markdown(f'<div class="sa-table-counter">{total:,} '
+                + ('matching records' if lang=='English' else 'मिलते हुए रिकॉर्ड') + '</div>',
+                unsafe_allow_html=True)
     if not rows:
         st.info(tr('nodata'))
         return
-    readable,spreadsheet=st.tabs(['📖 '+tr('readable'),'▤ '+tr('spreadsheet')])
-    with readable:
-        st.markdown('<div class="record-view-explainer">'+esc(
-            'Every observation and suggested action is shown in full. Use the page selector for more records.'
-            if lang=='English' else 'हर अवलोकन और सुझाव पूरा दिखाई देगा। अन्य रिकॉर्ड के लिए पृष्ठ चुनें।')+'</div>',unsafe_allow_html=True)
-        page_size=st.selectbox(tr('per_page'),[5,10,20],index=1,key=f'read_size_{kind}')
-        pages=max(1,(len(rows)+page_size-1)//page_size)
-        if st.session_state.get(f'read_page_{kind}',1)>pages:
-            st.session_state[f'read_page_{kind}']=1
-        current=st.selectbox(tr('page'),list(range(1,pages+1)),format_func=lambda n:f'{n} {tr("of")} {pages}',key=f'read_page_{kind}')
-        first=(current-1)*page_size
-        # Pagination is only a readability feature, not a filter on any report calculations.
-        for n,raw in enumerate(rows[first:first+page_size],first+1):
-            st.markdown(readable_record_card(raw,kind,n),unsafe_allow_html=True)
-    with spreadsheet:
-        st.caption('For a quick scan; scroll horizontally if needed. Full text is in the first tab.' if lang=='English'
-                   else 'जल्दी देखने के लिए तालिका। पूरा पाठ पहले टैब में दिखता है।')
-        presented=public_rows(rows,kind)
-        st.dataframe(presented,hide_index=True,use_container_width=True,
-                     height=min(540,120+45*len(rows)),row_height=48)
+    st.markdown('<div class="sa-table-note">'+esc(
+        'Records appear in a table with complete, wrapped text. Use filters above to narrow results.'
+        if lang=='English' else 'रिकॉर्ड तालिका में पूरे टेक्स्ट के साथ दिखाई देंगे। ऊपर दिए फिल्टर से रिकॉर्ड चुनें।'
+    )+'</div>',unsafe_allow_html=True)
+    left,right=st.columns([1,1],gap='small')
+    with left:
+        page_size=st.selectbox('Rows per page / प्रति पृष्ठ रिकॉर्ड',[10,20,50],index=0,key=f'table_size_{kind}')
+    with right:
+        all_columns=st.checkbox('All columns / सभी कॉलम',value=False,key=f'table_all_columns_{kind}',
+                                help='Reveal every source field. Wide tables can scroll horizontally.')
+    pages=max(1,(total+page_size-1)//page_size)
+    page_key=f'table_page_{kind}'
+    # Clamp before the widget is created; Streamlit forbids post-render widget writes.
+    if st.session_state.get(page_key,1) not in range(1,pages+1):
+        st.session_state[page_key]=1
+    if pages>1:
+        current=st.selectbox(tr('page'),list(range(1,pages+1)),
+                             format_func=lambda n:f'{n} {tr("of")} {pages}',key=page_key)
+    else:
+        current=1
+    first=(current-1)*page_size
+    batch=rows[first:first+page_size]
+    if all_columns:
+        st.markdown(_wrapped_table_html(batch,kind,all_columns=True),unsafe_allow_html=True)
+    else:
+        st.markdown(_wrapped_table_html(batch,kind,mobile=False),unsafe_allow_html=True)
+        st.markdown(_wrapped_table_html(batch,kind,mobile=True),unsafe_allow_html=True)
+    st.caption(('Showing' if lang=='English' else 'दिखाए गए') +f' {first+1}–{min(total,first+page_size)} / {total}.'+
+               (' Scroll sideways only if needed.' if lang=='English' else ' आवश्यकता हो तो दाएँ-बाएँ स्क्रॉल करें।'))
+    # Export all filtered records, not just the currently visible page.
     st.download_button('⬇ '+tr('download'),csv_file(public_rows(rows,kind)),
                        file_name=f'saarthi_manjhanpur_{kind}_{NOW.date()}.csv',mime='text/csv',key=key)
 
-def set_page(page): st.session_state['page_v5']=page
+def set_page(page):
+    st.session_state['page_v5']=page
 
-def save_report(): st.session_state['saved_report_v52']=st.session_state['report_v5']
+
+def set_report(kind):
+    """Callback updates report context before any widgets are rendered.
+    Deliberately leaves coordinator, period and location filters untouched.
+    """
+    if kind not in TABS:
+        return
+    st.session_state['report_v5']=kind
+    st.session_state['saved_report_v52']=kind
+    st.session_state['page_v5']='reports'
+
+
+def main_navigation():
+    """Four large buttons remain accessible even when the sidebar is hidden on phones."""
+    labels={
+        'home':'⌂ '+tr('home'),
+        'reports':'▦ '+tr('reports'),
+        'dates':'▤ '+tr('dates'),
+        'team':'♙ '+tr('team'),
+    }
+    st.markdown('<div class="sa-nav-label">'+esc(
+        'Navigate / मुख्य मेन्यू' if lang=='English' else 'मुख्य मेन्यू / Navigate'
+    )+'</div>',unsafe_allow_html=True)
+    for pair in (('home','reports'),('dates','team')):
+        cols=st.columns(2,gap='small')
+        for column,destination in zip(cols,pair):
+            with column:
+                st.button(labels[destination], key=f'main_nav_btn_{destination}',
+                          on_click=set_page, args=(destination,),
+                          type='primary' if st.session_state.get('page_v5')==destination else 'secondary',
+                          use_container_width=True)
+    if st.session_state.get('page_v5')=='health':
+        st.button('← '+tr('home'),on_click=set_page,args=('home',),
+                  key='health_return_home',use_container_width=True)
+
+
+def report_navigation():
+    """Two-column button grid: six reporting sections, no dropdown to reopen."""
+    icons={
+        'daily':'📅','registration':'👥','whatsapp':'💬',
+        'actions':'📝','booth':'🗳️','social':'📱',
+    }
+    keys=list(TABS)
+    st.markdown('<div class="sa-nav-label">'+esc(
+        'Choose a reporting section / रिपोर्ट चुनें'
+    )+'</div>',unsafe_allow_html=True)
+    for start in range(0,len(keys),2):
+        pair=keys[start:start+2]
+        cols=st.columns(2,gap='small')
+        for column,key in zip(cols,pair):
+            with column:
+                st.button(f'{icons[key]} {TABS[key]["hi" if lang=="हिंदी" else "en"]}',
+                          key=f'report_btn_{key}',on_click=set_report,args=(key,),
+                          type='primary' if st.session_state.get('report_v5')==key else 'secondary',
+                          use_container_width=True)
+    return st.session_state['report_v5']
+
 
 # The MP's selection is one office-wide context. Values survive switching report types/pages.
 def _persist_scope():
@@ -504,6 +709,15 @@ with st.sidebar:
     st.markdown('### Saarthi Analytics')
     st.caption('Manjhanpur 252 · Office tools / कार्यालय सेटिंग')
     if 'source_v5' not in st.session_state:st.session_state['source_v5']='Live Google Sheets'
+    with st.expander('📂 Original Google Sheets / मूल गूगल शीट', expanded=False):
+        st.caption('Choose a coordinator to open the original sheet in a new tab. / संयोजक की मूल शीट खोलें।')
+        for member in COORDINATORS:
+            # Stable IDs are bundled in config.py; no editable external URLs are accepted.
+            st.markdown(
+                f'<a href="https://docs.google.com/spreadsheets/d/{esc(member["id"])}/edit" '
+                f'target="_blank" rel="noopener noreferrer">📄 {esc(member["en"])}</a>',
+                unsafe_allow_html=True,
+            )
     if st.button('🔄 '+tr('refresh'),use_container_width=True,key='reload_side_v5'):
         st.cache_data.clear();st.rerun()
     with st.expander('⚙ Office settings / कार्यालय सेटिंग'):
@@ -511,8 +725,6 @@ with st.sidebar:
         if st.button('View connection status',key='goto_health_v5',use_container_width=True,on_click=set_page,args=('health',)):
             pass
         st.caption('9 original sheets · 54 report tabs')
-        for person in COORDINATORS:
-            st.markdown(f'[{person["en"]}](https://docs.google.com/spreadsheets/d/{person["id"]}/edit)')
     if account and password and st.session_state.get('office_auth_v5',False):
         if st.button('Sign out',key='signout_v5'):
             st.session_state.office_auth_v5=False;st.rerun()
@@ -545,19 +757,14 @@ connected=sum(1 for entry in health if entry.get('ok'))
 total=len(COORDINATORS)*len(TABS)
 
 brand_header()
-# A single clearly-labelled page dropdown works on phones, tablets and laptops.
-# Keep the page key compatible with existing navigation callbacks.
-nav1,nav2=st.columns([2.2,1],gap='small')
-with nav1:
-    page=st.selectbox(
-        'Open page / पेज चुनें', PAGES + (['health'] if st.session_state.get('page_v5')=='health' else []),
-        format_func=lambda p: ('⚙ '+tr('health') if p=='health' else {
-            'home':'⌂ '+tr('home'), 'reports':'▣ '+tr('reports'),
-            'dates':'▤ '+tr('dates'), 'team':'♙ '+tr('team')}[p]),
-        key='page_v5',
-    )
-with nav2:
+# Keep language easily accessible without requiring a sidebar on mobile.
+lang_col1,lang_col2=st.columns([2.3,1],gap='small')
+with lang_col1:
+    st.caption('Saarthi Analytics · Field reports / फील्ड रिपोर्ट')
+with lang_col2:
     lang=st.selectbox('Language / भाषा',['English','हिंदी'],key='language_v5')
+main_navigation()
+page=st.session_state['page_v5']
 if source=='Live Google Sheets':
     if loaded and connected==total:
         state=f'{connected}/{total} '+('tabs connected' if lang=='English' else 'टैब जुड़े हुए')
@@ -620,7 +827,8 @@ if page=='home':
 
 elif page=='reports':
     hero(tr('reports'),'Select one report, apply filters, then view charts and records.' if lang=='English' else 'रिपोर्ट चुनें, फिल्टर लगाएँ और ग्राफ तथा रिकॉर्ड देखें।')
-    kind=st.selectbox(tr('section'),list(TABS),format_func=lambda k:TABS[k]['hi' if lang=='हिंदी' else 'en'],key='report_v5',on_change=save_report)
+    kind=report_navigation()
+    st.markdown('<div class="sa-selected-report">'+esc(TABS[kind]['hi' if lang=='हिंदी' else 'en'])+'</div>',unsafe_allow_html=True)
     st.caption('Your coordinator selection will stay the same when you change reports.' if lang=='English' else 'रिपोर्ट बदलने पर आपका चुना हुआ संयोजक नहीं बदलेगा।')
     who,low,high,include,booth,query,village=filters('reports_'+kind,kind)
     st.markdown(f'<span class="scope-chip">{esc(tr("active"))}: {esc(person_name(who))}</span>',unsafe_allow_html=True)
