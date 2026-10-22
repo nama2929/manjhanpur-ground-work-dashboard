@@ -12,7 +12,7 @@ COORDINATORS = [
 ]
 TABS = {
     'daily': {'en':'Daily Tracker','hi':'दैनिक ट्रैकर','aliases':['Daily Traker','Daily tracker']},
-    'registration':{'en':'Worker Registration','hi':'कार्यकर्ता पंजीकरण','aliases':['Worker Registration','Yuva worker Registration']},
+    'registration':{'en':'Youth Worker Registration','hi':'युवा कार्यकर्ता पंजीकरण','aliases':['Worker Registration','Yuva worker Registration','Youth Worker Registration','युवा कार्यकर्ता पंजीकरण']},
     'whatsapp':{'en':'WhatsApp Groups','hi':'व्हॉट्सऐप ग्रुप','aliases':['व्हॉट्सऐप ग्रुप','Whatsaap group','Whatsapp Group','WhatsApp group']},
     'actions':{'en':'Actionable Points','hi':'एक्शनेबल बिंदु','aliases':['एक्शनेबल बिंदु','Actionable point','Actionable Point']},
     'booth':{'en':'Booth Worker Status','hi':'बूथ के कार्यकर्ता की स्थिति','aliases':['बूथ के कार्यकर्ता की स्थिति','Booth worker status','Booth Worker Status']},
