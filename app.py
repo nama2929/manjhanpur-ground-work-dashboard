@@ -64,7 +64,7 @@ LABEL = {
         'subtitle':'Manjhanpur Assembly 252 • Office of MP Pushpendra Saroj',
         'recent':'Recent dated reports','byworker':'Coordinator-wise work','bydate':'Daily reporting trend',
         'wa':'Reported WhatsApp additions','groups':'Unique WhatsApp groups',
-        'registrations':'Worker registrations','booths':'Booths visited','observations':'Actionable records',
+        'registrations':'Youth worker registrations','booths':'Booths visited','observations':'Actionable records',
         'entries':'Total report entries','nodata':'No records match the current filters.',
         'nodates':'No dated records are available for this selection.', 'unknown':'Entries without dates',
         'team_title':'Coordinator Overview', 'quick':'Open a report', 'office':'Office view',
@@ -84,7 +84,7 @@ LABEL = {
         'subtitle':'मंझनपुर विधानसभा 252 • सांसद पुष्पेन्द्र सरोज कार्यालय',
         'recent':'हाल की दिनांकित रिपोर्ट','byworker':'संयोजक अनुसार काम','bydate':'दिनांकवार काम का ग्राफ',
         'wa':'व्हॉट्सऐप पर रिपोर्ट किए नए सदस्य','groups':'अलग व्हॉट्सऐप ग्रुप',
-        'registrations':'कार्यकर्ता पंजीकरण','booths':'दौरे वाले बूथ','observations':'कार्रवाई योग्य रिकॉर्ड',
+        'registrations':'युवा कार्यकर्ता पंजीकरण','booths':'दौरे वाले बूथ','observations':'कार्रवाई योग्य रिकॉर्ड',
         'entries':'कुल रिपोर्ट एंट्री','nodata':'चुने हुए फिल्टर में रिकॉर्ड नहीं मिले।',
         'nodates':'चुनी हुई अवधि में दिनांकित रिकॉर्ड नहीं हैं।','unknown':'बिना तारीख के रिकॉर्ड',
         'team_title':'संयोजक सारांश','quick':'रिपोर्ट खोलें','office':'कार्यालय दृश्य',
@@ -378,6 +378,28 @@ def person_name(name):
     if name==ALL:return tr('any')
     return next((p['hi'] for p in COORDINATORS if p['en']==name),name) if lang=='हिंदी' else name
 
+# Worker Registration column L records when a person became an SP worker,
+# not the date the coordinator typed or submitted this registration.
+REG_JOIN_LABEL = {
+    'English': 'Date joined Samajwadi Party',
+    'हिंदी': 'समाजवादी पार्टी से जुड़ने की तारीख',
+}
+REG_TREND_LABEL = {
+    'English': 'Youth workers joined the Samajwadi Party — by joining date',
+    'हिंदी': 'समाजवादी पार्टी से जुड़ने वाले युवा कार्यकर्ता — जुड़ने की तारीख अनुसार',
+}
+REG_DATE_NOTE = {
+    'English': ('The date in this register means when the person became a Samajwadi Party worker, '
+                'NOT when a coordinator entered their details. Date filters here use joining dates.'),
+    'हिंदी': ('इस रजिस्टर की तारीख वह दिन है जब व्यक्ति समाजवादी पार्टी का कार्यकर्ता बना था, '
+              'न कि डेटा शीट में भरने की तारीख। यहाँ तारीख का फ़िल्टर जुड़ने की तारीख पर लागू होता है।'),
+}
+
+def field_label(kind, field):
+    if kind == 'registration' and field == 'date':
+        return REG_JOIN_LABEL[lang]
+    return FIELD_NAMES[field][0 if lang == 'English' else 1]
+
 def public_rows(rows,kind):
     result=[]
     for r in rows:
@@ -390,7 +412,7 @@ def public_rows(rows,kind):
             elif field=='booth':val=normalized_booth(val)
             elif field in ('additions','team_size','followers'):val=to_int(val)
             else:val=display_value(field,val,lang)
-            row[FIELD_NAMES[field][0 if lang=='English' else 1]]=val
+            row[field_label(kind,field)]=val
         result.append(row)
     return result
 
@@ -432,9 +454,9 @@ def readable_record_card(raw, kind, n):
             f'<div class="record-info-grid">{"".join(cells)}</div></article>')
 
 
-def _table_label(field):
+def _table_label(field,kind=None):
     """Translate a source field name without changing the stored record."""
-    return FIELD_NAMES[field][0 if lang == 'English' else 1]
+    return field_label(kind,field) if kind == 'registration' and field == 'date' else FIELD_NAMES[field][0 if lang == 'English' else 1]
 
 
 def _wrapped_table_html(records, kind, all_columns=False, mobile=False):
@@ -469,7 +491,7 @@ def _wrapped_table_html(records, kind, all_columns=False, mobile=False):
         }[kind]
         if all_columns:
             core=list(SECTION_FIELDS[kind])
-        labels=[('coordinator',tr('worker'))]+[(f,_table_label(f)) for f in core]
+        labels=[('coordinator',tr('worker'))]+[(f,_table_label(f,kind)) for f in core]
 
     heading_html=''.join(
         f'<th scope="col" class="{("sa-long" if key in ("issue","action","remarks","content","details") else "sa-meta" if key in ("coordinator","location","name","panchayat") else "sa-small")}">{esc(label)}</th>'
@@ -480,15 +502,15 @@ def _wrapped_table_html(records, kind, all_columns=False, mobile=False):
         if mobile and not all_columns:
             meta_parts=[f'<span class="sa-cell-strong">{esc(row.get(tr("worker"),""))}</span>']
             for field in ('date','panchayat','booth'):
-                val=row.get(_table_label(field),'')
+                val=row.get(_table_label(field,kind),'')
                 if val not in ('',None,'—'):
-                    meta_parts.append(f'<span class="sa-cell-quiet">{esc(_table_label(field))}: {esc(val)}</span>')
+                    meta_parts.append(f'<span class="sa-cell-quiet">{esc(_table_label(field,kind))}: {esc(val)}</span>')
             detail_fields=[mobile_primary]+mobile_secondary
             details=[]
             for f in detail_fields:
-                value=row.get(_table_label(f),'')
+                value=row.get(_table_label(f,kind),'')
                 if value in ('',None,'—'):continue
-                details.append(f'<span class="sa-cell-quiet sa-detail-title">{esc(_table_label(f))}</span>'
+                details.append(f'<span class="sa-cell-quiet sa-detail-title">{esc(_table_label(f,kind))}</span>'
                                f'<span class="sa-detail-text">{esc(value)}</span>')
             values={'location':'\n'.join(meta_parts),
                     'details':'<div class="sa-mobile-details">'+''.join(details)+'</div>'}
@@ -496,7 +518,7 @@ def _wrapped_table_html(records, kind, all_columns=False, mobile=False):
             data=[values.get(k,'') for k,_ in labels]
         else:
             data=[esc(row.get(tr('worker'),'')) if key=='coordinator'
-                  else esc(row.get(_table_label(key),'')) for key,_ in labels]
+                  else esc(row.get(_table_label(key,kind),'')) for key,_ in labels]
         out.append('<tr>'+''.join(
             f'<td class="{("sa-long" if key in ("issue","action","remarks","content","details") else "sa-meta" if key in ("coordinator","location","name","panchayat") else "sa-small")}">{val}</td>'
             for (key,_),val in zip(labels,data)
@@ -767,12 +789,13 @@ def reset_filters(kind=None):
             st.session_state.pop(f'extra_{kind}_{suffix}',None)
 
 
-def date_choice(key):
+def date_choice(key,kind=None):
     opts=['all','today','yesterday','week','month','custom']
     if 'scope_period_saved' not in st.session_state: st.session_state.scope_period_saved='all'
     if 'scope_period_widget' not in st.session_state:
         st.session_state.scope_period_widget=st.session_state.scope_period_saved
-    period=st.selectbox('Period / अवधि',opts,format_func=tr,key='scope_period_widget',on_change=_persist_period)
+    period=st.selectbox(('SP joining-date period / सपा से जुड़ने की अवधि' if kind=='registration' else 'Period / अवधि'),
+                        opts,format_func=tr,key='scope_period_widget',on_change=_persist_period)
     today=NOW.date();low=high=None
     if period=='today':low=high=today
     elif period=='yesterday':low=high=today-dt.timedelta(days=1)
@@ -795,7 +818,7 @@ def filters(key,kind=None):
     with c1:
         person=st.selectbox('Coordinator / संयोजक',[ALL]+[p['en'] for p in COORDINATORS],
                             format_func=person_name,key='scope_worker_widget',on_change=_persist_scope)
-    with c2:low,high,include=date_choice(key)
+    with c2:low,high,include=date_choice(key,kind)
     st.markdown('<div class="scope-hint">'+esc(
         'This coordinator and date selection stays active when you switch reports.'
         if lang=='English' else 'संयोजक और तारीख का चयन अन्य रिपोर्ट खोलने पर भी बना रहेगा।')+'</div>',
@@ -980,11 +1003,12 @@ if page=='home':
         with right:
             heading(tr('bydate'))
             daily={}
-            for r in everyone:
+            for r in (row for tab in TABS if tab!='registration' for row in picked[tab]):
                 if r.get('_date'):
                     date=r['_date'].isoformat();daily[date]=daily.get(date,0)+1
             if not make_chart([{'Date':d,'Value':v} for d,v in sorted(daily.items())],'Date','Value',mode='line',height=305):
                 st.info(tr('nodates'))
+            st.caption('Youth worker joining dates are excluded from daily field reporting.' if lang=='English' else 'युवा कार्यकर्ताओं के पार्टी से जुड़ने की तारीख को दैनिक फील्ड रिपोर्टिंग में नहीं जोड़ा गया है।')
         heading(tr('quick'))
         c1,c2,c3=st.columns(3,gap='small')
         with c1:st.button('▣ '+tr('reports'),on_click=set_page,args=('reports',),use_container_width=True,type='primary',key='go_reports_v5')
@@ -1002,6 +1026,8 @@ elif page=='reports':
         hero(tr('reports'),'Select one report, apply filters, then view charts and records.' if lang=='English' else 'रिपोर्ट चुनें, फिल्टर लगाएँ और ग्राफ तथा रिकॉर्ड देखें।')
         st.markdown('<div class="sa-selected-report">'+esc(TABS[kind]['hi' if lang=='हिंदी' else 'en'])+'</div>',unsafe_allow_html=True)
         st.caption('Your coordinator selection will stay the same when you change reports.' if lang=='English' else 'रिपोर्ट बदलने पर आपका चुना हुआ संयोजक नहीं बदलेगा।')
+        if kind == 'registration':
+            st.info(REG_DATE_NOTE[lang])
         who,low,high,include,booth,query,village=filters('reports_'+kind,kind)
         st.markdown(f'<span class="scope-chip">{esc(tr("active"))}: {esc(person_name(who))}</span>',unsafe_allow_html=True)
         if loaded:
@@ -1021,8 +1047,10 @@ elif page=='reports':
                     heading(tr('byworker'))
                     if not make_chart(coordinator_activity(records,kind,lang),'Coordinator','Value',horizontal=True,height=285):st.info(tr('nodata'))
                 with c2:
-                    heading(tr('bydate'))
+                    heading(REG_TREND_LABEL[lang] if kind=='registration' else tr('bydate'))
                     if not make_chart(trend(records,kind),'Date','Value',mode='line',height=285):st.info(tr('nodates'))
+                    if kind=='registration':
+                        st.caption(REG_DATE_NOTE[lang])
                 category_field={'registration':'status','actions':'type','booth':'status','social':'platform','daily':'panchayat','whatsapp':'status'}.get(kind)
                 categories=category_counts(records,category_field,lang) if category_field else []
                 if categories:
@@ -1035,13 +1063,14 @@ elif page=='reports':
         else:st.info('No live source connected yet.' if lang=='English' else 'लाइव स्रोत अभी जुड़ा नहीं है।')
 
 elif page=='dates':
-    hero(tr('dates'),'Date-by-date reporting; WhatsApp additions are a separate measure.' if lang=='English' else 'दिनांकवार रिपोर्ट। व्हॉट्सऐप नए सदस्य अलग आँकड़ा है।')
+    hero(tr('dates'),('Daily field reporting and party joining dates are shown separately.'
+                      if lang=='English' else 'दैनिक रिपोर्ट और पार्टी से जुड़ने की तारीख अलग-अलग दिखाई गई हैं।'))
     who,low,high,include,*_=filters('date_report')
     if loaded:
         matrix=daily_matrix(data,who,low,high,include,filter_rows)
         scoped={k:filter_rows(data[k],who,low,high,include) for k in TABS}
         metric_cards([(TABS[k]['hi' if lang=='हिंदी' else 'en'],stats(v)['additions'] if k=='whatsapp' else len(v)) for k,v in scoped.items()])
-        byday=[{'Date':r['Date'],'Value':sum(r[k] for k in TABS if k!='whatsapp')} for r in matrix]
+        byday=[{'Date':r['Date'],'Value':sum(r[k] for k in TABS if k not in ('whatsapp','registration'))} for r in matrix]
         wa=[{'Date':r['Date'],'Value':r['whatsapp']} for r in matrix]
         c1,c2=st.columns(2,gap='medium')
         with c1:
@@ -1050,9 +1079,14 @@ elif page=='dates':
         with c2:
             heading(tr('wa'))
             if not make_chart(wa,'Date','Value'):st.info(tr('nodates'))
+        heading(REG_TREND_LABEL[lang])
+        registration_joining=[{'Date':r['Date'],'Value':r['registration']} for r in matrix if r['registration']]
+        if not make_chart(registration_joining,'Date','Value',mode='line',height=240):
+            st.info('No recorded joining dates for this selection.' if lang=='English' else 'इस चयन में जुड़ने की तारीख नहीं मिली।')
+        st.caption(REG_DATE_NOTE[lang])
         heading(tr('table'))
         if matrix:
-            table=[{'Date / दिनांक':r['Date'],**{TABS[k]['hi' if lang=='हिंदी' else 'en']:r[k] for k in TABS}} for r in matrix]
+            table=[{'Date / दिनांक':r['Date'],**{(('Youth joined SP (count)' if lang=='English' else 'सपा से जुड़े युवा (संख्या)') if k=='registration' else TABS[k]['hi' if lang=='हिंदी' else 'en']):r[k] for k in TABS}} for r in matrix]
             st.dataframe(table,hide_index=True,use_container_width=True)
             st.download_button('⬇ '+tr('download'),csv_file(table),file_name='saarthi_daily_summary.csv',mime='text/csv',key='daily_export_v5')
         else:st.info(tr('nodates'))
@@ -1060,7 +1094,7 @@ elif page=='dates':
         if any(undated.values()):
             with st.expander(tr('unknown')):
                 st.dataframe([{'Report':TABS[k]['hi' if lang=='हिंदी' else 'en'],'Undated records':v} for k,v in undated.items() if v],hide_index=True)
-                st.caption('Undated entries are excluded from dated charts. Add dates to the original Google Sheet to improve reporting.')
+                st.caption('Missing dates are excluded from date charts. In Youth Worker Registration, the missing date refers to when a person joined the Samajwadi Party, not data entry.' if lang=='English' else 'बिना तारीख वाले रिकॉर्ड दिनांकवार ग्राफ में नहीं आते। युवा कार्यकर्ता पंजीकरण में तारीख पार्टी से जुड़ने की है, डेटा भरने की नहीं।')
     else:st.info(tr('nodata'))
 
 elif page=='team':
@@ -1077,13 +1111,13 @@ elif page=='team':
             wa=[r for r in scoped['whatsapp'] if r['_coordinator']==w]
             act=[r for r in scoped['actions'] if r['_coordinator']==w]
             team_records.append({'Coordinator / संयोजक':person_name(w),
-                  'Daily entries / दैनिक एंट्री':len(d),'Registration / पंजीकरण':len(reg),
+                  'Daily entries / दैनिक एंट्री':len(d),'Youth registrations / युवा पंजीकरण':len(reg),
                   'WA additions / नए सदस्य':stats(wa)['additions'],
                   'Unique groups / अलग ग्रुप':stats(wa)['groups'],
                   'Action records / कार्रवाई':len(act)})
         metric_cards([('Coordinators / संयोजक',len(workers)),('Report entries / एंट्री',sum(len(x) for x in scoped.values())),(tr('wa'),stats(scoped['whatsapp'])['additions'])])
         heading(tr('byworker'))
-        chart=[{'Coordinator':r['Coordinator / संयोजक'],'Value':r['Daily entries / दैनिक एंट्री']+r['Registration / पंजीकरण']+r['Action records / कार्रवाई']} for r in team_records]
+        chart=[{'Coordinator':r['Coordinator / संयोजक'],'Value':r['Daily entries / दैनिक एंट्री']+r['Youth registrations / युवा पंजीकरण']+r['Action records / कार्रवाई']} for r in team_records]
         if not make_chart(chart,'Coordinator','Value',horizontal=True,height=325):st.info(tr('nodata'))
         st.caption('Comparison excludes WhatsApp addition counts because people-addition totals are different units from report entries.')
         heading(tr('table'))
